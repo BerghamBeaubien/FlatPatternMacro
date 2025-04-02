@@ -1,12 +1,14 @@
 ﻿using SolidEdgeCommunity.Extensions;
+using SolidEdgeFramework;
 using SolidEdgeGeometry;
 using SolidEdgePart;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
+using System.Drawing;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
+using System.Linq;
+using System.Windows.Forms.VisualStyles;
 
 namespace SaveAsFlatDXF
 {
@@ -16,11 +18,7 @@ namespace SaveAsFlatDXF
         static void Main(string[] args)
         {
             SolidEdgeFramework.Application application = null;
-            //SolidEdgeFramework.Documents documents = null;
-
             dynamic dynamicDoc = null;
-            //SolidEdgePart.PartDocument document = null;
-            //SolidEdgePart.SheetMetalDocument sheetMetalDocument = null;
 
             SolidEdgePart.FlatPatternModel flatPatternModel = null;
             SolidEdgeGeometry.Body body = null;
@@ -30,153 +28,193 @@ namespace SaveAsFlatDXF
             SolidEdgeGeometry.Edge edge = null;
             SolidEdgeGeometry.Vertex vertex = null;
 
-            try
+            SolidEdgePart.Models models = null;
+            SolidEdgePart.Model model = null;
+            bool useForm = true;
+
+            using (var form = new FlatPatternPromptForm())
             {
-                // Register with OLE to handle concurrency issues on the current thread.
-                SolidEdgeCommunity.OleMessageFilter.Register();
-
-                // Connect to Solid Edge,
-                application = SolidEdgeCommunity.SolidEdgeUtils.Connect(true);
-
-                // Get a reference to the Documents collection.
-                //documents = application.Documents;
-                dynamicDoc = application.ActiveDocument;
-
-                // Get a refernce to the active sheetmetal document.
-                if (dynamicDoc is SolidEdgePart.PartDocument)
+                if (form.ShowDialog() == DialogResult.OK)
                 {
-                    dynamicDoc = application.GetActiveDocument<SolidEdgePart.PartDocument>(false);
-                    Console.WriteLine("PartDocument");
-                }
-                else if (dynamicDoc is SolidEdgePart.SheetMetalDocument)
-                {
-                    dynamicDoc = application.GetActiveDocument<SolidEdgePart.SheetMetalDocument>(false);
-                    Console.WriteLine("SheetMetalDocument");
-                }
-                else
-                {
-                    throw new System.Exception("Active document is not a PartDocument or SheetMetalDocument.");
-                }
-                
-
-                if (dynamicDoc == null)
-                {
-                    throw new System.Exception("No active document.");
-                }
-
-                if (dynamicDoc.FlatPatternModels.Count == 0)
-                {
-                    flatPatternModel = dynamicDoc.FlatPatternModels.Add(dynamicDoc.Models.Item(1));
-                }
-                else
-                {
-                    flatPatternModel = dynamicDoc.FlatPatternModels.Item(1);
-                }
-
-                // Get a reference to the model's body.
-                body = (Body)flatPatternModel.Body;
-
-                // Query for all faces in the body.
-                faces = (SolidEdgeGeometry.Faces)body.Faces[SolidEdgeGeometry.FeatureTopologyQueryTypeConstants.igQueryAll];
-
-                // Show the number of faces for debugging
-                //MessageBox.Show($"Number of faces in the part: {faces.Count}", "Face Count");
-
-                // Find the face furthest from the center
-                face = GetFaceFurthestFromCenter(body, faces);
-
-                MessageBox.Show($"Selected face: {face.ID} + Aire = {face.Area.ToString()}", "Selected Face");
-
-                if (face != null)
-                {
-                    // Get edges from the selected face
-                    edges = (SolidEdgeGeometry.Edges)face.Edges;
-                    MessageBox.Show($"Number of edges in the face: {edges.Count}", "Edge Count");
-
-                    if (edges.Count > 0)
+                    if (form.IsAutomatic)
                     {
-                        // Select the first edge as a default
-                        edge = (SolidEdgeGeometry.Edge)edges.Item(1);
+                        useForm = false;
+                    }
+                }
+                else if (form.DialogResult != DialogResult.OK)
+                {
+                    Console.WriteLine("Programme arrêté par l'utilisateur.");
+                    System.Environment.Exit(0);
+                }
+
+                try
+                {
+                    // Register with OLE to handle concurrency issues on the current thread.
+                    SolidEdgeCommunity.OleMessageFilter.Register();
+
+                    // Connect to Solid Edge,
+                    application = SolidEdgeCommunity.SolidEdgeUtils.Connect(true);
+
+                    // Get a reference to the active document.
+                    dynamicDoc = (SolidEdgeDocument)application.ActiveDocument;
+
+                    // Get a reference to the active document.
+                    if (dynamicDoc is SolidEdgePart.PartDocument)
+                    {
+                        dynamicDoc = (SolidEdgeDocument)application.GetActiveDocument<SolidEdgePart.PartDocument>(false);
+                        Console.WriteLine("PartDocument");
+                    }
+                    else if (dynamicDoc is SolidEdgePart.SheetMetalDocument)
+                    {
+                        dynamicDoc = (SolidEdgeDocument)application.GetActiveDocument<SolidEdgePart.SheetMetalDocument>(false);
+                        Console.WriteLine("SheetMetalDocument");
                     }
                     else
                     {
-                        throw new System.Exception("Selected face has no edges.");
-                    }
-                }
-                else
-                {
-                    throw new System.Exception("Failed to select a face.");
-                }
-
-                vertex = (SolidEdgeGeometry.Vertex)edge.StartVertex;
-
-                if (dynamicDoc is SolidEdgePart.PartDocument partDocument)
-                {
-                    if (faces == null || faces.Count == 0)
-                    {
-                        Console.WriteLine("La collection faces est vide ou nulle.");
+                        MessageBox.Show("Active document is not a PartDocument or SheetMetalDocument.", "Erreur");
                         return;
                     }
 
-                    for (int i = 1; i <= faces.Count; i++)
+                    try
                     {
-                        try
+                        models = dynamicDoc.Models;
+                        model = models.Item(1);
+
+                        Console.WriteLine($"nombre de features : {model.Features.Count.ToString()}");
+
+                        if (model.ConvToSMs.Count == 0 && model.Features.Count == 1)
                         {
-                            object faz = faces.Item(i);
-
-                            if (faz == null)
+                            model.HealAndOptimizeBody(true, true);
+                            body = (Body)model.Body;
+                            faces = (Faces)body.Faces[FeatureTopologyQueryTypeConstants.igQueryPlane];
+                            face = (Face)faces.Item(1);
+                            for (int i = 2; i <= faces.Count; i++) // Parcours les faces
                             {
-                                Console.WriteLine($"Face {i} est null, passage à la suivante.");
-                                continue;
+                                SolidEdgeGeometry.Face currentFace = (Face)faces.Item(i);
+
+                                if (currentFace.Area > face.Area) face = currentFace;
+                            }
+                            Console.WriteLine($"User selected Face {face.ID} - Area: {face.Area * 1550.0031} po²");
+
+                            edges = (SolidEdgeGeometry.Edges)face.Edges;
+                            Array edgesArray = Array.CreateInstance(typeof(object), edges.Count);
+
+                            for (int i = 1; i <= edges.Count; i++)
+                            {
+                                edgesArray.SetValue(edges.Item(i), i - 1); // Note the i-1 since Array is 0-based
                             }
 
-                            // Vérifier si l'objet est bien un COM Object
-                            if (!Marshal.IsComObject(faz))
-                            {
-                                Console.WriteLine($"Face {i} n'est pas un objet COM valide.");
-                                continue;
-                            }
-
-                            // Vérifier si l'objet supporte une méthode typique d'une Face
-                            var faceType = faz.GetType();
-                            if (faceType.InvokeMember("GetType", System.Reflection.BindingFlags.InvokeMethod, null, faz, null) == null)
-                            {
-                                Console.WriteLine($"faz {i} ne semble pas être un type reconnu.");
-                                continue;
-                            }
-
-                            // Si toutes les vérifications passent, tenter la transformation
-                            partDocument.TransformToSynchronousSheetmetal(faz);
-                            Console.WriteLine($"Transformation réussie avec la face {i}");
-                            break; // Sortie de la boucle si la transformation réussit
+                            model.ConvToSMs.AddEx(face, 0, edgesArray, 0, 0, 0);
+                            model.ConvToSMs.Item(1).ShowDimensions = true;
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            Console.WriteLine($"Erreur sur la face {i}: {ex.Message}");
+                            Console.WriteLine("Il existe déjà une transformation en Synchronous Sheet Metal.", "Transformation existante");
+                            //goto SkipTry;
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ Erreur lors de la transformation : {ex.Message}");
+                        DialogResult result = MessageBox.Show(
+                            "Veuillez transformer la pièce en Synchronous Sheet Metal manuellement.\n" +
+                            "Quand vous aurez fini, appuyez sur OK pour continuer ou Annuler pour quitter.",
+                            "Problème de transformation",
+                            MessageBoxButtons.OKCancel,
+                            MessageBoxIcon.Warning
+                        );
+
+                        if (result == DialogResult.Cancel)
+                        {
+                            Console.WriteLine("🚪 Programme arrêté par l'utilisateur.");
+                            System.Environment.Exit(0);
+                        }
+                    }
+
+                    if (dynamicDoc.FlatPatternModels.Count == 0)
+                    {
+                        flatPatternModel = dynamicDoc.FlatPatternModels.Add(dynamicDoc.Models.Item(1));
+                    }
+                    else
+                    {
+                        flatPatternModel = dynamicDoc.FlatPatternModels.Item(1);
+                    }
+
+                    if (flatPatternModel.FlatPatterns.Count != 0)
+                    {
+                        DialogResult result = MessageBox.Show(
+                                "La pièce est déjà dépliée.\n" +
+                                "Voulez vous en créer un autre?",
+                                "Déplie Existant",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Warning
+                            );
+                        if (result != DialogResult.OK) return;
+                    }
+
+                    models = dynamicDoc.Models;
+                    model = models.Item(1);
+                    body = (Body)model.Body;
+                    faces = (Faces)body.Faces[FeatureTopologyQueryTypeConstants.igQueryPlane];
+                    // Continuer le programme normalement ici
+                    Console.WriteLine("➡️ Continuation du programme...");
+
+                    if (useForm)
+                    {
+                        using (FaceAndEdgeSelectionForm selectionForm = new FaceAndEdgeSelectionForm(application, dynamicDoc, model))
+                        {
+                            if (selectionForm.ShowDialog() == DialogResult.OK)
+                            {
+                                face = selectionForm.SelectedFace;
+                                edge = selectionForm.SelectedEdge;
+                                Console.WriteLine($"User selected Edge {edge.ID} on Face {face.ID}");
+                            }
+                            else
+                            {
+                                Console.WriteLine("User canceled selection for flat pattern.");
+                                return;
+                            }
+                        }
+                    }
+                    else
+                    {
+
+                        face = GetFaceFurthestFromCenter(body, faces);
+
+                        //// Manual face selection remplacer XXXX par l'ID de la face (Pour Débogage)
+                        //face = (Face)faces.Item(1);
+                        //for (int i =1; i <= faces.Count; i++)
+                        //{
+                        //    SolidEdgeGeometry.Face currentFace = (Face)faces.Item(i);
+                        //    if (currentFace.ID == XXXX) face = currentFace;
+                        //}
+                        //Console.WriteLine($"User selected Face {face.ID} - Area: {face.Area * 1550.0031} mm²");
+
+                        //Automatic edge selections
+                        edge = GetEdgeAlignedWithCoordinatesSystem(face);
+                    }
+
+                    Console.WriteLine($"Edge Choisi: {edge.ID}, Face Choisie: {face.ID}");
+                    vertex = (SolidEdgeGeometry.Vertex)edge.StartVertex;
+                    flatPatternModel.FlatPatterns.Add(edge, face, vertex, SolidEdgeConstants.FlattenPatternModelTypeConstants.igFlattenPatternModelTypeFlattenAnything);
+                    Console.WriteLine("✅ Flat pattern created successfully.");
+                    //PartDocument partDocument = (PartDocument)dynamicDoc;
+                    //System.Threading.Thread.Sleep(2000);
+                    //partDocument.Save();
+                    //partDocument.Close();
                 }
-                else
+                catch (System.Exception ex)
                 {
-                    Console.WriteLine("Le document n'est pas un PartDocument.");
+                    MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Console.WriteLine(ex.Message);
                 }
-
-
-
-                flatPatternModel.FlatPatterns.Add(edge, face, vertex, SolidEdgeConstants.FlattenPatternModelTypeConstants.igFlattenPatternModelTypeFlattenAnything);
-
-            }
-            catch (System.Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Console.WriteLine(ex.Message);
-            }
-            finally
-            {
-                SolidEdgeCommunity.OleMessageFilter.Unregister();
+                finally
+                {
+                    SolidEdgeCommunity.OleMessageFilter.Unregister();
+                }
             }
         }
-
+        #region Recuperer Face et Edge
         /// <summary>
         /// Finds the face that is furthest from the center of the body
         /// </summary>
@@ -229,15 +267,7 @@ namespace SaveAsFlatDXF
             double maxDistance = -1;
 
             // Define minimum face area threshold (adjust this value as needed)
-            const double MIN_FACE_AREA_THRESHOLD = 0.005; // in square meters
-
-            // Display face areas information
-            string faceInfoMessage = "Face Information:\n";
-            foreach (var info in faceInfo)
-            {
-                faceInfoMessage += $"Face ID: {info.Id}, Area: {info.Area:F6}\n";
-            }
-            MessageBox.Show(faceInfoMessage);
+            const double MIN_FACE_AREA_THRESHOLD = 0.05; // in square meters
 
             // Loop through all faces to find the one furthest from center
             for (int i = 1; i <= faces.Count; i++)
@@ -281,10 +311,69 @@ namespace SaveAsFlatDXF
             // Display information about the selected face
             if (furthestFace != null)
             {
-                MessageBox.Show($"Selected furthest face area: {furthestFace.Area:F6}");
+                Console.WriteLine($"Selected furthest face area: {furthestFace.Area* 1550.0031:F6}sqin");
             }
 
             return furthestFace;
         }
+
+        private static SolidEdgeGeometry.Edge GetEdgeAlignedWithCoordinatesSystem(SolidEdgeGeometry.Face face)
+        {
+            if (face == null)
+                throw new System.Exception("No face selected.");
+
+            SolidEdgeGeometry.Edges edges = (SolidEdgeGeometry.Edges)face.Edges;
+            Console.WriteLine($"{edges.Count} edges found on face {face.ID}");
+
+            if (edges.Count == 0)
+                throw new System.Exception("Selected face has no edges.");
+
+            const double METERS_TO_INCHES = 39.3701;
+            SolidEdgeGeometry.Edge firstEdge = null;
+            SolidEdgeGeometry.Edge selectedEdge = null;
+
+            for (int i = 1; i <= edges.Count; i++)
+            {
+                SolidEdgeGeometry.Edge edge = (SolidEdgeGeometry.Edge)edges.Item(i);
+                if (firstEdge == null) firstEdge = edge; // Store first edge found
+
+                SolidEdgeGeometry.Vertex startVertex = (SolidEdgeGeometry.Vertex)edge.StartVertex;
+                SolidEdgeGeometry.Vertex endVertex = (SolidEdgeGeometry.Vertex)edge.EndVertex;
+
+                if (startVertex == null || endVertex == null)
+                    continue;
+
+                Array startPointArray = Array.CreateInstance(typeof(double), 3);
+                Array endPointArray = Array.CreateInstance(typeof(double), 3);
+
+                startVertex.GetPointData(ref startPointArray);
+                endVertex.GetPointData(ref endPointArray);
+
+                double[] startPoint = { (double)startPointArray.GetValue(0), (double)startPointArray.GetValue(1), (double)startPointArray.GetValue(2) };
+                double[] endPoint = { (double)endPointArray.GetValue(0), (double)endPointArray.GetValue(1), (double)endPointArray.GetValue(2) };
+
+                double startX = startPoint[0] * METERS_TO_INCHES;
+                double startY = startPoint[1] * METERS_TO_INCHES;
+                double startZ = startPoint[2] * METERS_TO_INCHES;
+                double endX = endPoint[0] * METERS_TO_INCHES;
+                double endY = endPoint[1] * METERS_TO_INCHES;
+                double endZ = endPoint[2] * METERS_TO_INCHES;
+
+                int sameCoordinates = 0;
+                if (Math.Abs(startX - endX) < 0.001) sameCoordinates++;
+                if (Math.Abs(startY - endY) < 0.001) sameCoordinates++;
+                if (Math.Abs(startZ - endZ) < 0.001) sameCoordinates++;
+
+                if (sameCoordinates >= 2)
+                {
+                    selectedEdge = edge;
+                    break;
+                }
+            }
+
+            return selectedEdge ?? firstEdge;
+        }
+
+        #endregion
     }
 }

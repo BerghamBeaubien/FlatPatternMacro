@@ -35,14 +35,22 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Interop.SolidEdge">
-      <HintPath>P:\DESSINS\DIVERS FAB\MOUAD\C#-SE-Macro-LIB\Interop.SolidEdge.dll</HintPath>
+    <Reference Include="EdgeSharp">
+      <HintPath>..\..\..\..\..\..\..\Desktop\EdgeSharp-d8ccf81e072a02cabb9f916c4180bc5299957e45\EdgeSharp\bin\Debug\net8.0-windows\EdgeSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Interop.SolidEdge, Version=220.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>P:\DESSINS\DIVERS FAB\MOUAD\Coding\C#-SE-Macro-LIB\Interop.SolidEdge.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="SolidEdge.Community">
       <HintPath>P:\DESSINS\DIVERS FAB\MOUAD\C#-SE-Macro-LIB\SolidEdge.Community.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.ValueTuple, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.ValueTuple.4.6.1\lib\net462\System.ValueTuple.dll</HintPath>
     </Reference>
@@ -54,6 +62,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FaceAndEdgeSelectionForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FlatPatternPromptForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
