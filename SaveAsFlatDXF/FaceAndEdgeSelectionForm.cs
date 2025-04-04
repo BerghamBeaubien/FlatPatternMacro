@@ -13,6 +13,7 @@ public class FaceAndEdgeSelectionForm : Form
     private SolidEdgeFramework.SolidEdgeDocument _document;
     private SolidEdgePart.Model _model;
     private SolidEdgeGeometry.Body _body;
+    private string formTitle;
 
     // UI Controls
     private TabControl _tabControl;
@@ -43,6 +44,7 @@ public class FaceAndEdgeSelectionForm : Form
         _document = document;
         _model = model;
         _body = (Body)model.Body;
+        formTitle = "Face and Edge Selection for part: " + document.Name;
 
         InitializeComponent();
         LoadFaces();
@@ -50,7 +52,7 @@ public class FaceAndEdgeSelectionForm : Form
 
     private void InitializeComponent()
     {
-        this.Text = "Sélection de Face et Arête pour Développé";
+        this.Text = formTitle;
         this.Size = new Size(600, 500);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -65,12 +67,12 @@ public class FaceAndEdgeSelectionForm : Form
         _tabControl.ItemSize = new Size(120, 30);
 
         // Create face tab
-        _faceTabPage = new TabPage("Sélection de Face");
+        _faceTabPage = new TabPage("Face Selection");
         _faceTabPage.Padding = new Padding(15);
         _faceTabPage.BackColor = Color.White;
 
         // Create edge tab
-        _edgeTabPage = new TabPage("Sélection d'Arête");
+        _edgeTabPage = new TabPage("Edge Selection");
         _edgeTabPage.Padding = new Padding(15);
         _edgeTabPage.BackColor = Color.White;
         _edgeTabPage.Enabled = false; // Disable until face is selected
@@ -95,7 +97,7 @@ public class FaceAndEdgeSelectionForm : Form
 
         // Create face tab instruction label
         Label faceInstructionLabel = new Label();
-        faceInstructionLabel.Text = "Veuillez sélectionner une face. Les faces sont triées par surface (de la plus grande à la plus petite).";
+        faceInstructionLabel.Text = "Please choose a face. The items are sorted from biggest area to smallest.";
         faceInstructionLabel.AutoSize = false;
         faceInstructionLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
         faceInstructionLabel.Dock = DockStyle.Top;
@@ -106,7 +108,7 @@ public class FaceAndEdgeSelectionForm : Form
         faceInstructionLabel.Margin = new Padding(0, 0, 0, 10);
 
         // Create edge tab instruction label
-        edgeInstructionLabel.Text = "Arêtes de la face XXX : Veuillez en sélectionner une seule.";
+        edgeInstructionLabel.Text = "Edge of face XXX : Please choose one.";
         edgeInstructionLabel.AutoSize = false;
         edgeInstructionLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
         edgeInstructionLabel.Dock = DockStyle.Top;
@@ -118,7 +120,7 @@ public class FaceAndEdgeSelectionForm : Form
 
         // Create buttons for face tab
         _selectFaceButton = new Button();
-        _selectFaceButton.Text = "Suivant";
+        _selectFaceButton.Text = "Next";
         _selectFaceButton.Enabled = false;
         _selectFaceButton.Size = new Size(100, 35);
         _selectFaceButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
@@ -129,7 +131,7 @@ public class FaceAndEdgeSelectionForm : Form
         _selectFaceButton.Click += (s, e) => SelectFace();
 
         _cancelButton = new Button();
-        _cancelButton.Text = "Annuler";
+        _cancelButton.Text = "Cancel";
         _cancelButton.Size = new Size(100, 35);
         _cancelButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
         _cancelButton.BackColor = Color.FromArgb(240, 240, 240);
@@ -139,7 +141,7 @@ public class FaceAndEdgeSelectionForm : Form
 
         // Create buttons for edge tab
         _backButton = new Button();
-        _backButton.Text = "Retour";
+        _backButton.Text = "Back";
         _backButton.Size = new Size(100, 35);
         _backButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
         _backButton.BackColor = Color.FromArgb(240, 240, 240);
@@ -148,7 +150,7 @@ public class FaceAndEdgeSelectionForm : Form
         _backButton.Click += (s, e) => GoBackToFaceSelection();
 
         _selectEdgeButton = new Button();
-        _selectEdgeButton.Text = "Sélectionner";
+        _selectEdgeButton.Text = "Choose";
         _selectEdgeButton.Enabled = false;
         _selectEdgeButton.Size = new Size(100, 35);
         _selectEdgeButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
@@ -159,7 +161,7 @@ public class FaceAndEdgeSelectionForm : Form
         _selectEdgeButton.Click += (s, e) => SelectFinalEdge();
 
         _completeButton = new Button();
-        _completeButton.Text = "Annuler";
+        _completeButton.Text = "Cancel";
         _completeButton.Size = new Size(100, 35);
         _completeButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
         _completeButton.BackColor = Color.FromArgb(240, 240, 240);
@@ -246,14 +248,14 @@ public class FaceAndEdgeSelectionForm : Form
                 SolidEdgeGeometry.Face face = (SolidEdgeGeometry.Face)faces.Item(i);
                 _faces.Add(face);
 
-                // Get face area in mm²
-                double areaInSqMm = face.Area * 1550.0031;
+                // Get face area in in²
+                double areaInSqIn = face.Area * 1550.0031;
 
                 FaceItem item = new FaceItem
                 {
                     Face = face,
-                    AreaInSqMm = areaInSqMm,
-                    DisplayName = $"Face ID: {face.ID} - Area: {areaInSqMm:F2} mm²"
+                    AreaInSqMm = areaInSqIn,
+                    DisplayName = $"Face ID: {face.ID} - Area: {areaInSqIn:F2} in²"
                 };
 
                 faceItems.Add(item);
@@ -321,7 +323,7 @@ public class FaceAndEdgeSelectionForm : Form
 
             // Load edges for the selected face
             LoadEdges(_selectedFace);
-            this.edgeInstructionLabel.Text = $"Arêtes de la Face {_selectedFace.ID} : Veuillez en choisir une seule.";
+            this.edgeInstructionLabel.Text = $"Edges of Face {_selectedFace.ID} : Please choose one.";
 
             // Switch to edge tab
             _edgeTabPage.Enabled = true;
@@ -348,7 +350,7 @@ public class FaceAndEdgeSelectionForm : Form
             SolidEdgeGeometry.Edges edges = (SolidEdgeGeometry.Edges)face.Edges;
             List<EdgeItem> edgeItems = new List<EdgeItem>();
 
-            this._edgeTabPage.Text = $"Arêtes de la Face {face.ID}";
+            this._edgeTabPage.Text = $"Edges of face {face.ID}";
 
             for (int i = 1; i <= edges.Count; i++)
             {
@@ -399,7 +401,7 @@ public class FaceAndEdgeSelectionForm : Form
 
                     item.Edge = edge;
                     item.LengthInPo = lengthInPo;
-                    item.DisplayName = $"Edge ID: {edge.ID} - Length: {lengthInPo:F2} po";
+                    item.DisplayName = $"Edge ID: {edge.ID} - Length: {lengthInPo:F2} in";
 
 
                     edgeItems.Add(item);

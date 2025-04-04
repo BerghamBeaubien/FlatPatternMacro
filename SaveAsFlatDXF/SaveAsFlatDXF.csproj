@@ -62,6 +62,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BouttonToggle.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="FaceAndEdgeSelectionForm.cs">
       <SubType>Form</SubType>
     </Compile>

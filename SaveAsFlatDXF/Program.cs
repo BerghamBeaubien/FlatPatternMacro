@@ -43,7 +43,7 @@ namespace SaveAsFlatDXF
                 }
                 else if (form.DialogResult != DialogResult.OK)
                 {
-                    Console.WriteLine("Programme arrêté par l'utilisateur.");
+                    Console.WriteLine("Program stopped by user");
                     System.Environment.Exit(0);
                 }
 
@@ -75,12 +75,13 @@ namespace SaveAsFlatDXF
                         return;
                     }
 
+                    //Transform the BodyFeature so that it can be used in the FlatPattern
                     try
                     {
                         models = dynamicDoc.Models;
                         model = models.Item(1);
 
-                        Console.WriteLine($"nombre de features : {model.Features.Count.ToString()}");
+                        Console.WriteLine($"Features number: {model.Features.Count.ToString()}");
 
                         if (model.ConvToSMs.Count == 0 && model.Features.Count == 1)
                         {
@@ -88,7 +89,7 @@ namespace SaveAsFlatDXF
                             body = (Body)model.Body;
                             faces = (Faces)body.Faces[FeatureTopologyQueryTypeConstants.igQueryPlane];
                             face = (Face)faces.Item(1);
-                            for (int i = 2; i <= faces.Count; i++) // Parcours les faces
+                            for (int i = 2; i <= faces.Count; i++)
                             {
                                 SolidEdgeGeometry.Face currentFace = (Face)faces.Item(i);
 
@@ -101,7 +102,7 @@ namespace SaveAsFlatDXF
 
                             for (int i = 1; i <= edges.Count; i++)
                             {
-                                edgesArray.SetValue(edges.Item(i), i - 1); // Note the i-1 since Array is 0-based
+                                edgesArray.SetValue(edges.Item(i), i - 1);
                             }
 
                             model.ConvToSMs.AddEx(face, 0, edgesArray, 0, 0, 0);
@@ -109,24 +110,23 @@ namespace SaveAsFlatDXF
                         }
                         else
                         {
-                            Console.WriteLine("Il existe déjà une transformation en Synchronous Sheet Metal.", "Transformation existante");
-                            //goto SkipTry;
+                            Console.WriteLine("The part is already transformed.", "Transformation existant");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"❌ Erreur lors de la transformation : {ex.Message}");
+                        Console.WriteLine($"❌ Erreur during the transformation : {ex.Message}");
                         DialogResult result = MessageBox.Show(
-                            "Veuillez transformer la pièce en Synchronous Sheet Metal manuellement.\n" +
-                            "Quand vous aurez fini, appuyez sur OK pour continuer ou Annuler pour quitter.",
-                            "Problème de transformation",
+                            "Please Transfrom the Part manually.\n" +
+                            "When you are done, press OK to continue or cancel to end the program.",
+                            "Transform Problem",
                             MessageBoxButtons.OKCancel,
                             MessageBoxIcon.Warning
                         );
 
                         if (result == DialogResult.Cancel)
                         {
-                            Console.WriteLine("🚪 Programme arrêté par l'utilisateur.");
+                            Console.WriteLine("Programme stopped by user.");
                             System.Environment.Exit(0);
                         }
                     }
@@ -143,9 +143,9 @@ namespace SaveAsFlatDXF
                     if (flatPatternModel.FlatPatterns.Count != 0)
                     {
                         DialogResult result = MessageBox.Show(
-                                "La pièce est déjà dépliée.\n" +
-                                "Voulez vous en créer un autre?",
-                                "Déplie Existant",
+                                "The part is already has a flat pattern.\n" +
+                                "Do you want to create a new one?",
+                                "Flat Pattern Existant",
                                 MessageBoxButtons.OKCancel,
                                 MessageBoxIcon.Warning
                             );
@@ -156,8 +156,6 @@ namespace SaveAsFlatDXF
                     model = models.Item(1);
                     body = (Body)model.Body;
                     faces = (Faces)body.Faces[FeatureTopologyQueryTypeConstants.igQueryPlane];
-                    // Continuer le programme normalement ici
-                    Console.WriteLine("➡️ Continuation du programme...");
 
                     if (useForm)
                     {
@@ -181,10 +179,10 @@ namespace SaveAsFlatDXF
 
                         face = GetFaceFurthestFromCenter(body, faces);
 
-                        //// Manual face selection remplacer XXXX par l'ID de la face (Pour Débogage)
+                        //// Manual face selection replace XXXX by face ID (Only for debugging)
                         //face = (Face)faces.Item(1);
                         //for (int i =1; i <= faces.Count; i++)
-                        //{
+                        //{f
                         //    SolidEdgeGeometry.Face currentFace = (Face)faces.Item(i);
                         //    if (currentFace.ID == XXXX) face = currentFace;
                         //}
@@ -194,10 +192,10 @@ namespace SaveAsFlatDXF
                         edge = GetEdgeAlignedWithCoordinatesSystem(face);
                     }
 
-                    Console.WriteLine($"Edge Choisi: {edge.ID}, Face Choisie: {face.ID}");
+                    Console.WriteLine($"Chosen Edge: {edge.ID}, Chosen Face: {face.ID}");
                     vertex = (SolidEdgeGeometry.Vertex)edge.StartVertex;
                     flatPatternModel.FlatPatterns.Add(edge, face, vertex, SolidEdgeConstants.FlattenPatternModelTypeConstants.igFlattenPatternModelTypeFlattenAnything);
-                    Console.WriteLine("✅ Flat pattern created successfully.");
+                    Console.WriteLine("Flat pattern created successfully.");
                     //PartDocument partDocument = (PartDocument)dynamicDoc;
                     //System.Threading.Thread.Sleep(2000);
                     //partDocument.Save();
@@ -214,7 +212,8 @@ namespace SaveAsFlatDXF
                 }
             }
         }
-        #region Recuperer Face et Edge
+
+        #region Face and Edge retrieval
         /// <summary>
         /// Finds the face that is furthest from the center of the body
         /// </summary>
